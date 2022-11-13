@@ -22,7 +22,13 @@ details on the available variables.
 Dependencies
 ------------
 
-None.
+As mentioned in the `Requirements` section, this role uses a module from
+the `community.general` collection, so you'll need to ensure that it's
+installed on your controller.  The current version as of this writing is
+`5.8.0`, so this or future versions should be pretty safe.  You can probably
+make use of older collections too, but I don't know when the `lists_mergeby`
+module was originally added to that collection, so I'm too lazy to find a
+minimum version.
 
 Example Playbook
 ----------------
