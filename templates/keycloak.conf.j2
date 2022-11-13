@@ -1,0 +1,11 @@
+# {{ ansible_managed }}
+
+{% for _key_conf in _keycloak_config %}
+{% if _key_conf.value is sameas true %}
+{{ _key_conf.name }}=true
+{% elif _key_conf.value is sameas false %}
+{{ _key_conf.name }}=false
+{% else %}
+{{ _key_conf.name }}={{ _key_conf.value }}
+{% endif %}
+{% endfor %}

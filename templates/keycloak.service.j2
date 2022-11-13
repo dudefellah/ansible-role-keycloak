@@ -1,0 +1,13 @@
+[Unit]
+Description=Keycloak service
+After=network.target nss-lookup.target
+
+[Service]
+Type=exec
+EnvironmentFile=-{{ _keycloak_environment_file }}
+ExecStartPre={{ keycloak_dest }}/bin/kc.sh build
+ExecStart={{ keycloak_dest }}/bin/kc.sh {{ keycloak_start_args }}
+ExecStop={{ keycloak_dest }}/bin/kc.sh stop
+
+[Install]
+WantedBy=network.target

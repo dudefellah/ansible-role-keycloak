@@ -1,0 +1,27 @@
+---
+galaxy_info:
+  author: dudefellah
+  role_name: keycloak
+  description: >-
+    Install Keycloak using the "OpenJDK" method as described in the Keycloak
+    documentation.
+
+  license: GPL-2.0-or-later
+
+  min_ansible_version: "2.9"
+
+  # Only tested on CentOS 8, probably needs a tiny bit of work to incorporate
+  # some other platforms.
+  #
+  # I'll probably take care of the generic Debian case sometime soon.
+  platforms:
+    - name: EL
+      versions:
+        - "8"
+
+  galaxy_tags:
+    - identity
+    - keycloak
+    - openjdk
+
+dependencies: []

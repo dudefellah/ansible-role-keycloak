@@ -1,0 +1,130 @@
+---
+# tasks file for keycloak
+- name: Get facts for this role
+  tags:
+    - keycloak
+  ansible.builtin.include_tasks: __keycloak_role_gather_facts.yml
+
+- name: Download dependencies
+  tags:
+    - keycloak
+  ansible.builtin.package:
+    name: "{{ _keycloak_packages }}"
+    state: present
+
+- name: Extract keycloak into a tempdir
+  when:
+    - >-
+      (__keycloak_current_version is not defined)
+      or (__keycloak_current_version != keycloak_src)
+  block:
+    - name: Create a tempdir
+      changed_when: false
+      register: __tmpdir
+      tags:
+        - keycloak
+      ansible.builtin.tempfile:
+        state: directory
+
+    - name: Extract the keycloak archive into the dest path
+      changed_when: false
+      tags:
+        - keycloak
+      ansible.builtin.unarchive:
+        src: "{{ keycloak_src }}"
+        dest: "{{ __tmpdir.path }}"
+        remote_src: true
+
+    - name: Get the created keycloak path in tmpdir
+      tags:
+        - keycloak
+      ansible.builtin.find:
+        path: "{{ __tmpdir.path }}"
+        file_type: directory
+        recurse: false
+      register: __tmpdir_contents
+
+    - name: Cache the current version details in the extracted archive path
+      tags:
+        - keycloak
+      ansible.builtin.template:
+        src: keycloak.version-cache.j2
+        dest: "{{ __tmpdir_contents.files[0].path }}/.ansible-version-cache"
+        owner: "{{ keycloak_user }}"
+        group: "{{ keycloak_group }}"
+        mode: "0644"
+
+    - name: Synchronize into destdir  # noqa fqcn[canonical]
+      tags:
+        - keycloak
+      ansible.builtin.synchronize:
+        src: "{{ __tmpdir_contents.files[0].path }}/"
+        dest: "{{ keycloak_dest }}"
+      delegate_to: "{{ inventory_hostname }}"
+
+  always:
+    - name: Cleanup tmpdir
+      changed_when: false
+      tags:
+        - keycloak
+      ansible.builtin.file:
+        path: "{{ __tmpdir.path }}"
+        state: absent
+
+- name: Deposit the keycloak configuration file
+  no_log: "{{ keycloak_no_log }}"
+  notify:
+    - reload keycloak
+  tags:
+    - keycloak
+  ansible.builtin.template:
+    src: keycloak.conf.j2
+    dest: "{{ keycloak_config_file }}"
+    owner: "{{ keycloak_user }}"
+    group: "{{ keycloak_group }}"
+    mode: "0640"
+
+- name: Deposit the keycloak environment file
+  no_log: "{{ keycloak_no_log }}"
+  notify:
+    - reload keycloak
+  tags:
+    - keycloak
+  ansible.builtin.template:
+    src: keycloak.environment.j2
+    dest: "{{ _keycloak_environment_file }}"
+    owner: "{{ keycloak_user }}"
+    group: "{{ keycloak_group }}"
+    mode: "0640"
+
+- name: Deposit the keycloak systemd service file
+  register: __keycloak_service_file
+  notify:
+    - reload keycloak
+  tags:
+    - keycloak
+    - molecule-notest
+  ansible.builtin.template:
+    src: keycloak.service.j2
+    dest: "/etc/systemd/system/keycloak.service"
+    owner: "root"
+    group: "root"
+    mode: "0640"
+
+- name: Daemon-reload  # noqa no-handler
+  when:
+    - "__keycloak_service_file.changed"
+  tags:
+    - keycloak
+    - molecule-notest
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Set the systemd service state
+  tags:
+    - keycloak
+    - molecule-notest
+  ansible.builtin.service:
+    name: "{{ keycloak_service_name }}"
+    state: "{{ keycloak_service_state }}"
+    enabled: "{{ keycloak_service_enabled }}"

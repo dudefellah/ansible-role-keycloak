@@ -1,0 +1,4 @@
+# {{ ansible_managed }}
+{% for (k, e) in keycloak_environment.items() %}
+{{ k }}="{{ e }}"
+{% endfor %}

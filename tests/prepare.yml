@@ -1,0 +1,62 @@
+---
+- hosts: all
+  gather_facts: true
+  become: true
+  tasks:
+    - name: Install dependency packages
+      ansible.builtin.package:
+        name:
+          - python3-psycopg2
+          - postgresql-server
+          - java-17-openjdk
+          - sudo
+        state: present
+
+    - name: Init pgsql
+      ansible.builtin.command: /usr/bin/postgresql-setup --initdb
+      ignore_errors: true
+
+    - name: Start postgres
+      ansible.builtin.service:
+        name: postgresql
+        state: started
+
+    - name: Allow access to 127.0.0.1 pg on localhost
+      ansible.builtin.lineinfile:
+        path: /var/lib/pgsql/data/pg_hba.conf
+        regexp: '^host.*127.0.0.1.*ident'
+        line: 'host    all     all       127.0.0.1/32    md5'
+
+    - name: "Allow access to ::1/128 pg on localhost"
+      ansible.builtin.lineinfile:
+        path: /var/lib/pgsql/data/pg_hba.conf
+        regexp: '^host.*127.0.0.1.*ident'
+        line: 'host    all     all       ::1/128    md5'
+
+    - name: Restart postgresql
+      ansible.builtin.service:
+        name: postgresql
+        state: restarted
+
+    - name: Create the postgres database for keycloak
+      become_user: postgres
+      community.postgresql.postgresql_db:
+        name: "{{ keycloak_db_name }}"
+        template: template1
+
+    - name: Define keycloak database user(s)
+      become_user: postgres
+      community.postgresql.postgresql_user:
+        db: "{{ keycloak_db_name }}"
+        name: "{{ keycloak_db_username }}"
+        password: "{{ keycloak_db_password }}"
+
+    - name: Provide database access
+      become_user: postgres
+      community.postgresql.postgresql_privs:
+        database: postgres
+        state: present
+        privs: ALL
+        type: database
+        obj: "{{ keycloak_db_name }}"
+        role: "{{ keycloak_db_username }}"

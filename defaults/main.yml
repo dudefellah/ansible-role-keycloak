@@ -1,0 +1,115 @@
+---
+# defaults file for keycloak
+keycloak_src: https://github.com/keycloak/keycloak/releases/download/20.0.1/keycloak-20.0.1.zip
+
+# User and group to own files and keycloak processes
+keycloak_user: keycloak
+keycloak_group: keycloak
+
+# When true, the role will create the keycloak user and group for you
+keycloak_manage_user: false
+
+# Dependency packages to install
+#
+# If left null, relevant packages will be determined by this role for your
+# platform (if supported).  set this to an empty list to prevent anything
+# from being installed.
+keycloak_packages: null
+
+# Keycloak destination dir
+keycloak_dest: /opt/keycloak
+
+# The next few values will be added to the default list of config options in
+# keycloak_config as a convenience.  If you overwrite `keycloak_config`, this
+# option may become irrelevant
+#
+# This is the name of the keycloak database.
+keycloak_db_url: "jdbc:postgresql://localhost/keycloak"
+
+# The username for the database user
+keycloak_db_username: keycloak
+
+# This is the password to be used to access the keycloak database
+keycloak_db_password: keycloak
+
+# Default username and password for the keycloak admin.
+keycloak_admin_username: admin
+keycloak_admin_password: password
+
+# The following is a list of configuration options.
+#
+# NOTE: I had originally created these lists as a way of preserving the order
+# of options in the destination config file, but now I'm managing
+# these values in a way that ruins this order, so don't let the listiness
+# fool you.  Keycloak's config shouldn't care about the order though, so
+# it should all be fine.
+#
+# Each entry is a dict with a `name` and `value` key.  This will be rendered
+# in the config file as:
+#
+#   name=value
+#
+# for each entry.
+#
+# These will replace the existing values in keycloak_config_default or
+# be added to the list if not found.
+#
+# If you include a `state: absent` record in these values, you can have
+# a named entry removed from the final list.
+keycloak_config: []
+
+# Below are some of the basic settings described in the distributed config
+# file.
+keycloak_config_default:
+  - name: db
+    value: postgres
+  - name: db-username
+    value: "{{ keycloak_db_username }}"
+  - name: db-password
+    value: "{{ keycloak_db_password }}"
+  - name: db-url
+    value: "{{ keycloak_db_url }}"
+  - name: health-enabled
+    value: true
+  - name: metrics-enabled
+    value: true
+  - name: https-certificate-file
+    value: "${kc.home.dir}/conf/server.crt.pem"
+  - name: https-certificate-key-file
+    value: "${kc.home.dir}/conf/server.key.pem"
+  - name: proxy
+    value: reencrypt
+  - name: spi-sticky-session-encoder-infinispan-should-attach-route
+    value: false
+  - name: hostname
+    value: "{{ inventory_hostname }}"
+
+# Destination path for the keycloak config file, to be populated with
+# `keycloak_config` contents.
+keycloak_config_file: "{{ keycloak_dest }}/conf/keycloak.conf"
+
+# Values that will be applied to the keycloak environment file;
+# likely /etc/sysconfig/keycloak or /etc/default/keycloak
+keycloak_environment:
+  KEYCLOAK_ADMIN: "{{ keycloak_admin_username }}"
+  KEYCLOAK_ADMIN_PASSWORD: "{{ keycloak_admin_password }}"
+
+# The keycloak environment file (ie. /etc/default or /etc/sysconfig file).
+# This will prepare environment variables before keycloak is started
+keycloak_environment_file: null
+
+# Set to false to enable debug logging.  This may reveal sensitive information
+# in your Ansible playbook logs.
+keycloak_no_log: true
+
+# Sometimes you might want to `start-dev` instead, for instance if you don't
+# have a TLS certificate, keycloak won't start.
+keycloak_start_arg: start
+
+# Name, state and enabled status of the keycloak service.
+keycloak_service_name: keycloak
+keycloak_service_state: started
+keycloak_service_enabled: true
+
+# Action to perform on the Keycloak service when the configuration has changed.
+keycloak_handler_service_state: restarted

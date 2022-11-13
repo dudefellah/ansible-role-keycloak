@@ -1,0 +1,72 @@
+---
+- name: Set the list of packages to install
+  tags:
+    - keycloak
+  ansible.builtin.set_fact:
+    _keycloak_packages: >-
+      {%- if keycloak_packages is not none -%}
+      {{ keycloak_packages }}
+      {%- elif (
+        (ansible_distribution in __keycloak_packages)
+        and (ansible_distribution_major_version | int in __keycloak_packages[ansible_distribution])
+      ) -%}
+      {{ __keycloak_packages[ansible_distribution][ansible_distribution_major_version|int] }}
+      {%- else -%}
+      {{ __keycloak_packages[ansible_distribution]['default'] }}
+      {%- endif -%}
+
+- name: Guess at the appropriate environment file
+  tags:
+    - keycloak
+  ansible.builtin.set_fact:
+    _keycloak_environment_file: >-
+      {%- if keycloak_environment_file is not none -%}
+      {{ keycloak_environment_file }}
+      {%- elif ansible_os_family == 'Debian' -%}
+      /etc/default/{{ keycloak_service_name }}
+      {%- elif ansible_os_family == 'RedHat' -%}
+      /etc/sysconfig/{{ keycloak_service_name }}
+      {%- endif -%}
+
+- name: Test for an existing install
+  tags:
+    - keycloak
+  ansible.builtin.stat:
+    path: "{{ keycloak_dest }}/.ansible-version-cache"
+  register: __keycloak_st
+
+- name: Get the the current version info
+  when:
+    - "__keycloak_st.stat.exists"
+  tags:
+    - keycloak
+  ansible.builtin.slurp:
+    path: "{{ keycloak_dest }}/.ansible-version-cache"
+  register: __keycloak_version_slurp
+
+- name: Set the stored version value
+  when:
+    - "'content' in __keycloak_version_slurp"
+  tags:
+    - keycloak
+  ansible.builtin.set_fact:
+    __keycloak_current_version: >-
+      {{ __keycloak_version_slurp.content | b64decode | trim }}
+
+- name: Merge the keycloak config lists
+  no_log: "{{ keycloak_no_log }}"
+  tags:
+    - keycloak
+  ansible.builtin.set_fact:
+    _keycloak_config: >-
+      {{ (
+            keycloak_config_default
+            | community.general.lists_mergeby(keycloak_config, 'name')
+            | selectattr('state', 'undefined')
+         )
+         + (
+              keycloak_config_default
+              | community.general.lists_mergeby(keycloak_config, 'name')
+              | selectattr('state', 'defined')
+              | rejectattr('state', '==', 'absent')
+         ) }}
